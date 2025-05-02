@@ -15,6 +15,12 @@ class DataPoint(BaseModel):
     value: float
     category: str
 
+# Clear the collection on startup
+@app.on_event("startup")
+async def clear_database():
+    db = get_database()
+    db.data.delete_many({})  # Remove all documents in the 'data' collection
+
 # Routes
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
@@ -34,3 +40,14 @@ async def get_data():
     for item in data:
         item["_id"] = str(item["_id"])
     return data
+
+@app.delete("/data/{id}")
+async def delete_data(id: str):
+    db = get_database()
+    try:
+        result = db.data.delete_one({"_id": ObjectId(id)})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Item not found")
+        return {"message": "Item deleted"}
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
